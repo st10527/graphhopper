@@ -22,19 +22,18 @@ import com.graphhopper.routing.util.TraversalMode;
 import com.graphhopper.routing.weighting.BeelineWeightApproximator;
 import com.graphhopper.routing.weighting.ConsistentWeightApproximator;
 import com.graphhopper.routing.weighting.WeightApproximator;
-import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.Graph;
+import com.graphhopper.storage.RoutingCHEdgeIteratorState;
+import com.graphhopper.storage.RoutingCHGraph;
 import com.graphhopper.storage.SPTEntry;
 import com.graphhopper.util.EdgeIterator;
-import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.Helper;
 
 public class AStarBidirectionCH extends AbstractBidirCHAlgo implements RecalculationHook {
     private ConsistentWeightApproximator weightApprox;
 
-    public AStarBidirectionCH(Graph graph, Weighting weighting) {
-        super(graph, weighting, TraversalMode.NODE_BASED);
-        BeelineWeightApproximator defaultApprox = new BeelineWeightApproximator(nodeAccess, weighting);
+    public AStarBidirectionCH(RoutingCHGraph graph) {
+        super(graph, TraversalMode.NODE_BASED);
+        BeelineWeightApproximator defaultApprox = new BeelineWeightApproximator(nodeAccess, graph.getWeighting());
         defaultApprox.setDistanceCalc(Helper.DIST_PLANE);
         setApproximation(defaultApprox);
     }
@@ -55,18 +54,8 @@ public class AStarBidirectionCH extends AbstractBidirCHAlgo implements Recalcula
     }
 
     @Override
-    protected BidirPathExtractor createPathExtractor(Graph graph, Weighting weighting) {
-        return new NodeBasedCHBidirPathExtractor(graph, graph.getBaseGraph(), weighting);
-    }
-
-    @Override
-    public String getName() {
-        return "astarbi|ch";
-    }
-
-    @Override
-    public String toString() {
-        return getName() + "|" + weighting;
+    protected BidirPathExtractor createPathExtractor(RoutingCHGraph graph) {
+        return new NodeBasedCHBidirPathExtractor(graph, graph.getWeighting());
     }
 
     @Override
@@ -83,7 +72,7 @@ public class AStarBidirectionCH extends AbstractBidirCHAlgo implements Recalcula
     }
 
     @Override
-    protected SPTEntry createEntry(EdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse) {
+    protected SPTEntry createEntry(RoutingCHEdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse) {
         int neighborNode = edge.getAdjNode();
         double heapWeight = weight + weightApprox.approximate(neighborNode, reverse);
         AStar.AStarEntry entry = new AStar.AStarEntry(edge.getEdge(), neighborNode, heapWeight, weight);
@@ -92,7 +81,7 @@ public class AStarBidirectionCH extends AbstractBidirCHAlgo implements Recalcula
     }
 
     @Override
-    protected void updateEntry(SPTEntry entry, EdgeIteratorState edge, int edgeId, double weight, SPTEntry parent, boolean reverse) {
+    protected void updateEntry(SPTEntry entry, RoutingCHEdgeIteratorState edge, int edgeId, double weight, SPTEntry parent, boolean reverse) {
         entry.edge = edge.getEdge();
         entry.weight = weight + weightApprox.approximate(edge.getAdjNode(), reverse);
         ((AStar.AStarEntry) entry).weightOfVisitedPath = weight;
@@ -100,10 +89,10 @@ public class AStarBidirectionCH extends AbstractBidirCHAlgo implements Recalcula
     }
 
     @Override
-    protected double calcWeight(EdgeIteratorState iter, SPTEntry currEdge, boolean reverse) {
+    protected double calcResultingWeight(RoutingCHEdgeIteratorState iter, SPTEntry currEdge, boolean reverse) {
         // TODO performance: check if the node is already existent in the opposite direction
         // then we could avoid the approximation as we already know the exact complete path!
-        return super.calcWeight(iter, currEdge, reverse);
+        return super.calcResultingWeight(iter, currEdge, reverse);
     }
 
     public WeightApproximator getApproximation() {
@@ -160,4 +149,10 @@ public class AStarBidirectionCH extends AbstractBidirCHAlgo implements Recalcula
             }
         }
     }
+
+    @Override
+    public String getName() {
+        return "astarbi|ch";
+    }
+
 }

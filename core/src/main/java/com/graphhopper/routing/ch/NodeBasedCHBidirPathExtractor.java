@@ -20,7 +20,7 @@ package com.graphhopper.routing.ch;
 
 import com.graphhopper.routing.BidirPathExtractor;
 import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.Graph;
+import com.graphhopper.storage.RoutingCHGraph;
 import com.graphhopper.storage.ShortcutUnpacker;
 import com.graphhopper.util.EdgeIteratorState;
 
@@ -28,9 +28,11 @@ import static com.graphhopper.util.EdgeIterator.NO_EDGE;
 
 public class NodeBasedCHBidirPathExtractor extends BidirPathExtractor {
     private final ShortcutUnpacker shortcutUnpacker;
+    private final RoutingCHGraph routingGraph;
 
-    public NodeBasedCHBidirPathExtractor(Graph routingGraph, Graph baseGraph, Weighting weighting) {
-        super(baseGraph, weighting);
+    public NodeBasedCHBidirPathExtractor(RoutingCHGraph routingGraph, Weighting weighting) {
+        super(routingGraph.getBaseGraph(), weighting);
+        this.routingGraph = routingGraph;
         shortcutUnpacker = createShortcutUnpacker(routingGraph, weighting);
     }
 
@@ -43,7 +45,7 @@ public class NodeBasedCHBidirPathExtractor extends BidirPathExtractor {
         }
     }
 
-    private ShortcutUnpacker createShortcutUnpacker(Graph routingGraph, final Weighting weighting) {
+    private ShortcutUnpacker createShortcutUnpacker(final RoutingCHGraph routingGraph, final Weighting weighting) {
         return new ShortcutUnpacker(routingGraph, new ShortcutUnpacker.Visitor() {
             @Override
             public void visit(EdgeIteratorState edge, boolean reverse, int prevOrNextEdgeId) {

@@ -112,7 +112,7 @@ public class BidirectionalRoutingTest {
     }
 
     private BidirRoutingAlgorithm createAlgo() {
-        return createAlgo(prepareCH ? chGraph : graph);
+        return createAlgo(graph);
     }
 
     private BidirRoutingAlgorithm createAlgo(Graph graph) {

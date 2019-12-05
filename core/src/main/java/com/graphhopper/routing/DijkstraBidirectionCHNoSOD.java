@@ -19,14 +19,13 @@ package com.graphhopper.routing;
 
 import com.graphhopper.routing.ch.NodeBasedCHBidirPathExtractor;
 import com.graphhopper.routing.util.TraversalMode;
-import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.Graph;
+import com.graphhopper.storage.RoutingCHEdgeIteratorState;
+import com.graphhopper.storage.RoutingCHGraph;
 import com.graphhopper.storage.SPTEntry;
-import com.graphhopper.util.EdgeIteratorState;
 
 public class DijkstraBidirectionCHNoSOD extends AbstractBidirCHAlgo {
-    public DijkstraBidirectionCHNoSOD(Graph graph, Weighting weighting) {
-        super(graph, weighting, TraversalMode.NODE_BASED);
+    public DijkstraBidirectionCHNoSOD(RoutingCHGraph graph) {
+        super(graph, TraversalMode.NODE_BASED);
     }
 
     @Override
@@ -45,18 +44,8 @@ public class DijkstraBidirectionCHNoSOD extends AbstractBidirCHAlgo {
     }
 
     @Override
-    protected BidirPathExtractor createPathExtractor(Graph graph, Weighting weighting) {
-        return new NodeBasedCHBidirPathExtractor(graph, graph.getBaseGraph(), weighting);
-    }
-
-    @Override
-    public String getName() {
-        return "dijkstrabi|ch|no_sod";
-    }
-
-    @Override
-    public String toString() {
-        return getName() + "|" + weighting;
+    protected BidirPathExtractor createPathExtractor(RoutingCHGraph graph) {
+        return new NodeBasedCHBidirPathExtractor(graph, graph.getWeighting());
     }
 
     @Override
@@ -65,7 +54,7 @@ public class DijkstraBidirectionCHNoSOD extends AbstractBidirCHAlgo {
     }
 
     @Override
-    protected SPTEntry createEntry(EdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse) {
+    protected SPTEntry createEntry(RoutingCHEdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse) {
         SPTEntry entry = new SPTEntry(edge.getEdge(), edge.getAdjNode(), weight);
         entry.parent = parent;
         return entry;
@@ -74,4 +63,10 @@ public class DijkstraBidirectionCHNoSOD extends AbstractBidirCHAlgo {
     protected SPTEntry getParent(SPTEntry entry) {
         return entry.getParent();
     }
+
+    @Override
+    public String getName() {
+        return "dijkstrabi|ch|no_sod";
+    }
+
 }

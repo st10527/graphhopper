@@ -19,26 +19,18 @@
 package com.graphhopper.routing.ch;
 
 import com.graphhopper.routing.*;
-import com.graphhopper.routing.util.LevelEdgeFilter;
 import com.graphhopper.routing.weighting.TurnWeighting;
 import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.CHGraph;
-import com.graphhopper.storage.CHProfile;
-import com.graphhopper.storage.Graph;
-import com.graphhopper.storage.TurnCostStorage;
+import com.graphhopper.storage.*;
 
 import static com.graphhopper.util.Parameters.Algorithms.ASTAR_BI;
 import static com.graphhopper.util.Parameters.Algorithms.DIJKSTRA_BI;
 
 public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
-    private final CHGraph chGraph;
     private final CHProfile chProfile;
-    private final PreparationWeighting prepareWeighting;
 
     public CHRoutingAlgorithmFactory(CHGraph chGraph) {
-        this.chGraph = chGraph;
         this.chProfile = chGraph.getCHProfile();
-        prepareWeighting = new PreparationWeighting(chProfile.getWeighting());
     }
 
     @Override
@@ -48,53 +40,49 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
         // and we cannot really use it here. The real reason we do this the way its done atm is that graph might be
         // a QueryGraph that wraps (our) CHGraph.
         AbstractBidirCHAlgo algo = doCreateAlgo(graph, opts);
-        algo.setEdgeFilter(new LevelEdgeFilter(chGraph));
         algo.setMaxVisitedNodes(opts.getMaxVisitedNodes());
         return algo;
     }
 
     private AbstractBidirCHAlgo doCreateAlgo(Graph graph, AlgorithmOptions opts) {
         if (chProfile.isEdgeBased()) {
-            return createAlgoEdgeBased(graph, opts);
+            TurnCostStorage turnCostStorage = graph.getTurnCostStorage();
+            if (turnCostStorage == null) {
+                throw new IllegalArgumentException("For edge-based CH you need a turn cost extension");
+            }
+            TurnWeighting turnWeighting = new TurnWeighting(getWeighting(), turnCostStorage, chProfile.getUTurnCosts());
+            RoutingCHGraph g = new RoutingCHGraphImpl(graph, getWeighting(), turnWeighting);
+            return createAlgoEdgeBased(g, opts);
         } else {
-            return createAlgoNodeBased(graph, opts);
+            RoutingCHGraph g = new RoutingCHGraphImpl(graph, chProfile.getWeighting());
+            return createAlgoNodeBased(g, opts);
         }
     }
 
-    private AbstractBidirCHAlgo createAlgoEdgeBased(Graph graph, AlgorithmOptions opts) {
+    private AbstractBidirCHAlgo createAlgoEdgeBased(RoutingCHGraph g, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
-            return new AStarBidirectionEdgeCHNoSOD(graph, createTurnWeightingForEdgeBased(graph))
-                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, graph.getNodeAccess()));
+            return new AStarBidirectionEdgeCHNoSOD(g)
+                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getBaseGraph().getNodeAccess()));
         } else if (DIJKSTRA_BI.equals(opts.getAlgorithm())) {
-            return new DijkstraBidirectionEdgeCHNoSOD(graph, createTurnWeightingForEdgeBased(graph));
+            return new DijkstraBidirectionEdgeCHNoSOD(g);
         } else {
             throw new IllegalArgumentException("Algorithm " + opts.getAlgorithm() + " not supported for edge-based Contraction Hierarchies. Try with ch.disable=true");
         }
     }
 
-    private AbstractBidirCHAlgo createAlgoNodeBased(Graph graph, AlgorithmOptions opts) {
+    private AbstractBidirCHAlgo createAlgoNodeBased(RoutingCHGraph g, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
-            return new AStarBidirectionCH(graph, prepareWeighting)
-                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, graph.getNodeAccess()));
+            return new AStarBidirectionCH(g)
+                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getBaseGraph().getNodeAccess()));
         } else if (DIJKSTRA_BI.equals(opts.getAlgorithm())) {
             if (opts.getHints().getBool("stall_on_demand", true)) {
-                return new DijkstraBidirectionCH(graph, prepareWeighting);
+                return new DijkstraBidirectionCH(g);
             } else {
-                return new DijkstraBidirectionCHNoSOD(graph, prepareWeighting);
+                return new DijkstraBidirectionCHNoSOD(g);
             }
         } else {
             throw new IllegalArgumentException("Algorithm " + opts.getAlgorithm() + " not supported for node-based Contraction Hierarchies. Try with ch.disable=true");
         }
-    }
-
-    private TurnWeighting createTurnWeightingForEdgeBased(Graph graph) {
-        // important: do not simply take the turn cost storage from ghStorage, because we need the wrapped storage from
-        // query graph!
-        TurnCostStorage turnCostStorage = graph.getTurnCostStorage();
-        if (turnCostStorage == null) {
-            throw new IllegalArgumentException("For edge-based CH you need a turn cost storage");
-        }
-        return new TurnWeighting(prepareWeighting, turnCostStorage, chProfile.getUTurnCosts());
     }
 
     public Weighting getWeighting() {

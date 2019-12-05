@@ -19,18 +19,9 @@ package com.graphhopper.routing;
 
 import com.carrotsearch.hppc.IntObjectMap;
 import com.graphhopper.coll.GHIntObjectHashMap;
-import com.graphhopper.routing.util.DefaultEdgeFilter;
-import com.graphhopper.routing.util.EdgeFilter;
-import com.graphhopper.routing.util.FlagEncoder;
 import com.graphhopper.routing.util.TraversalMode;
-import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.storage.Graph;
-import com.graphhopper.storage.NodeAccess;
-import com.graphhopper.storage.SPTEntry;
-import com.graphhopper.util.EdgeExplorer;
+import com.graphhopper.storage.*;
 import com.graphhopper.util.EdgeIterator;
-import com.graphhopper.util.EdgeIteratorState;
-import com.graphhopper.util.GHUtility;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,16 +30,14 @@ import java.util.PriorityQueue;
 import static com.graphhopper.util.EdgeIterator.ANY_EDGE;
 
 /**
- * Common subclass for bidirectional algorithms.
+ * Common subclass for bidirectional CH algorithms.
  * <p>
  *
  * @author Peter Karich
  * @author easbar
  */
 public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
-    protected final Graph graph;
-    protected final Weighting weighting;
-    protected final FlagEncoder flagEncoder;
+    protected final RoutingCHGraph graph;
     protected final TraversalMode traversalMode;
     protected int from;
     protected int to;
@@ -63,10 +52,11 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
     protected SPTEntry bestBwdEntry;
     protected double bestWeight;
     protected NodeAccess nodeAccess;
-    protected EdgeExplorer inEdgeExplorer;
-    protected EdgeExplorer outEdgeExplorer;
+    protected RoutingCHEdgeExplorer allEdgeExplorer;
+    protected RoutingCHEdgeExplorer inEdgeExplorer;
+    protected RoutingCHEdgeExplorer outEdgeExplorer;
     protected int maxVisitedNodes = Integer.MAX_VALUE;
-    protected EdgeFilter levelEdgeFilter;
+    protected CHEdgeFilter levelEdgeFilter;
     PriorityQueue<SPTEntry> pqOpenSetFrom;
     PriorityQueue<SPTEntry> pqOpenSetTo;
     private boolean updateBestPath = true;
@@ -76,14 +66,14 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
     int visitedCountTo;
     private boolean alreadyRun;
 
-    public AbstractBidirCHAlgo(Graph graph, Weighting weighting, TraversalMode tMode) {
-        this.weighting = weighting;
-        this.flagEncoder = weighting.getFlagEncoder();
-        this.traversalMode = tMode;
+    public AbstractBidirCHAlgo(RoutingCHGraph graph, TraversalMode tMode) {
         this.graph = graph;
-        this.nodeAccess = graph.getNodeAccess();
-        outEdgeExplorer = graph.createEdgeExplorer(DefaultEdgeFilter.outEdges(flagEncoder));
-        inEdgeExplorer = graph.createEdgeExplorer(DefaultEdgeFilter.inEdges(flagEncoder));
+        this.traversalMode = tMode;
+        this.nodeAccess = graph.getBaseGraph().getNodeAccess();
+        allEdgeExplorer = graph.createAllEdgeExplorer();
+        outEdgeExplorer = graph.createOutEdgeExplorer();
+        inEdgeExplorer = graph.createInEdgeExplorer();
+        levelEdgeFilter = new CHLevelEdgeFilter(graph);
         fromOutEdge = ANY_EDGE;
         toInEdge = ANY_EDGE;
         bestWeight = Double.MAX_VALUE;
@@ -116,7 +106,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
      * @param parent  the parent entry of in the shortest path tree
      * @param reverse true if we are currently looking at the backward search, false otherwise
      */
-    protected abstract SPTEntry createEntry(EdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse);
+    protected abstract SPTEntry createEntry(RoutingCHEdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse);
 
     @Override
     public Path calcPath(int from, int to) {
@@ -136,9 +126,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         return extractPath();
     }
 
-    protected BidirPathExtractor createPathExtractor(Graph graph, Weighting weighting) {
-        return new BidirPathExtractor(graph, weighting);
-    }
+    abstract protected BidirPathExtractor createPathExtractor(RoutingCHGraph graph);
 
     void init(int from, double fromWeight, int to, double toWeight) {
         initFrom(from, fromWeight);
@@ -168,7 +156,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         if (!traversalMode.isEdgeBased()) {
             if (updateBestPath) {
                 bestWeightMapOther = bestWeightMapFrom;
-                updateBestPath(GHUtility.getEdge(graph, currFrom.adjNode, to), currFrom, to, true);
+                updateBestPath(getEdge(currFrom.adjNode, to), currFrom, to, true);
             }
         } else if (from == to && fromOutEdge == ANY_EDGE && toInEdge == ANY_EDGE) {
             // special handling if start and end are the same and no directions are restricted
@@ -192,24 +180,33 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
             fillEdgesFromUsingFilter(levelEdgeFilter);
         } else {
             // need to use a local reference here, because additionalEdgeFilter is modified when calling fillEdgesFromUsingFilter
-            final EdgeFilter tmpFilter = levelEdgeFilter;
-            fillEdgesFromUsingFilter(new EdgeFilter() {
+            final CHEdgeFilter tmpFilter = levelEdgeFilter;
+            fillEdgesFromUsingFilter(new CHEdgeFilter() {
                 @Override
-                public boolean accept(EdgeIteratorState edgeState) {
+                public boolean accept(RoutingCHEdgeIteratorState edgeState) {
                     return (tmpFilter == null || tmpFilter.accept(edgeState)) && edgeState.getOrigEdgeFirst() == fromOutEdge;
                 }
             });
         }
     }
 
+    private RoutingCHEdgeIteratorState getEdge(int base, int adj) {
+        RoutingCHEdgeIterator iter = allEdgeExplorer.setBaseNode(base);
+        while (iter.next()) {
+            if (iter.getAdjNode() == adj)
+                return iter;
+        }
+        return null;
+    }
+
     protected void postInitTo() {
         if (toInEdge == ANY_EDGE) {
             fillEdgesToUsingFilter(levelEdgeFilter);
         } else {
-            final EdgeFilter tmpFilter = levelEdgeFilter;
-            fillEdgesToUsingFilter(new EdgeFilter() {
+            final CHEdgeFilter tmpFilter = levelEdgeFilter;
+            fillEdgesToUsingFilter(new CHEdgeFilter() {
                 @Override
-                public boolean accept(EdgeIteratorState edgeState) {
+                public boolean accept(RoutingCHEdgeIteratorState edgeState) {
                     return (tmpFilter == null || tmpFilter.accept(edgeState)) && edgeState.getOrigEdgeLast() == toInEdge;
                 }
             });
@@ -220,20 +217,20 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
      * @param edgeFilter edge filter used to fill edges. the {@link #levelEdgeFilter} reference will be set to
      *                   edgeFilter by this method, so make sure edgeFilter does not use it directly.
      */
-    protected void fillEdgesFromUsingFilter(EdgeFilter edgeFilter) {
+    protected void fillEdgesFromUsingFilter(CHEdgeFilter edgeFilter) {
         // we temporarily ignore the additionalEdgeFilter
-        EdgeFilter tmpFilter = levelEdgeFilter;
+        CHEdgeFilter tmpFilter = levelEdgeFilter;
         levelEdgeFilter = edgeFilter;
         finishedFrom = !fillEdgesFrom();
         levelEdgeFilter = tmpFilter;
     }
 
     /**
-     * @see #fillEdgesFromUsingFilter(EdgeFilter)
+     * @see #fillEdgesFromUsingFilter(CHEdgeFilter)
      */
-    protected void fillEdgesToUsingFilter(EdgeFilter edgeFilter) {
+    protected void fillEdgesToUsingFilter(CHEdgeFilter edgeFilter) {
         // we temporarily ignore the additionalEdgeFilter
-        EdgeFilter tmpFilter = levelEdgeFilter;
+        CHEdgeFilter tmpFilter = levelEdgeFilter;
         levelEdgeFilter = edgeFilter;
         finishedTo = !fillEdgesTo();
         levelEdgeFilter = tmpFilter;
@@ -295,13 +292,13 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
     }
 
     private void fillEdges(SPTEntry currEdge, PriorityQueue<SPTEntry> prioQueue,
-                           IntObjectMap<SPTEntry> bestWeightMap, EdgeExplorer explorer, boolean reverse) {
-        EdgeIterator iter = explorer.setBaseNode(currEdge.adjNode);
+                           IntObjectMap<SPTEntry> bestWeightMap, RoutingCHEdgeExplorer explorer, boolean reverse) {
+        RoutingCHEdgeIterator iter = explorer.setBaseNode(currEdge.adjNode);
         while (iter.next()) {
             if (!accept(iter, currEdge, reverse))
                 continue;
 
-            final double weight = calcWeight(iter, currEdge, reverse);
+            final double weight = calcResultingWeight(iter, currEdge, reverse);
             if (Double.isInfinite(weight)) {
                 continue;
             }
@@ -324,7 +321,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         }
     }
 
-    protected void updateBestPath(EdgeIteratorState edgeState, SPTEntry entry, int traversalId, boolean reverse) {
+    protected void updateBestPath(RoutingCHEdgeIteratorState edgeState, SPTEntry entry, int traversalId, boolean reverse) {
         SPTEntry entryOther = bestWeightMapOther.get(traversalId);
         if (entryOther == null)
             return;
@@ -337,7 +334,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
 
             // prevents the path to contain the edge at the meeting point twice and subtracts the weight (excluding turn weight => no previous edge)
             entry = entry.getParent();
-            weight -= weighting.calcWeight(edgeState, reverse, EdgeIterator.NO_EDGE);
+            weight -= calcWeight(edgeState, reverse, EdgeIterator.NO_EDGE);
         }
 
         if (weight < bestWeight) {
@@ -347,17 +344,26 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         }
     }
 
-    protected void updateEntry(SPTEntry entry, EdgeIteratorState edge, int edgeId, double weight, SPTEntry parent, boolean reverse) {
+    protected double calcWeight(RoutingCHEdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
+        double edgeWeight = edgeState.getWeight(reverse);
+        final int origEdgeId = reverse ? edgeState.getOrigEdgeLast() : edgeState.getOrigEdgeFirst();
+        double turnCosts = reverse
+                ? graph.getTurnWeight(origEdgeId, edgeState.getBaseNode(), prevOrNextEdgeId)
+                : graph.getTurnWeight(prevOrNextEdgeId, edgeState.getBaseNode(), origEdgeId);
+        return edgeWeight + turnCosts;
+    }
+
+    protected void updateEntry(SPTEntry entry, RoutingCHEdgeIteratorState edge, int edgeId, double weight, SPTEntry parent, boolean reverse) {
         entry.edge = edge.getEdge();
         entry.weight = weight;
         entry.parent = parent;
     }
 
-    protected boolean accept(EdgeIteratorState edge, SPTEntry currEdge, boolean reverse) {
+    protected boolean accept(RoutingCHEdgeIteratorState edge, SPTEntry currEdge, boolean reverse) {
         return accept(edge, getIncomingEdge(currEdge));
     }
 
-    protected int getOrigEdgeId(EdgeIteratorState edge, boolean reverse) {
+    protected int getOrigEdgeId(RoutingCHEdgeIteratorState edge, boolean reverse) {
         return edge.getEdge();
     }
 
@@ -365,17 +371,21 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         return entry.edge;
     }
 
-    protected int getTraversalId(EdgeIteratorState edge, int origEdgeId, boolean reverse) {
-        return traversalMode.createTraversalId(edge, reverse);
+    protected int getTraversalId(RoutingCHEdgeIteratorState edge, int origEdgeId, boolean reverse) {
+        return getTraversalId(edge, reverse);
     }
 
-    protected double calcWeight(EdgeIteratorState iter, SPTEntry currEdge, boolean reverse) {
-        return weighting.calcWeight(iter, reverse, getIncomingEdge(currEdge)) + currEdge.getWeightOfVisitedPath();
+    protected int getTraversalId(RoutingCHEdgeIteratorState edge, boolean reverse) {
+        return traversalMode.createTraversalId(edge.getBaseNode(), edge.getAdjNode(), edge.getEdge(), reverse);
+    }
+
+    protected double calcResultingWeight(RoutingCHEdgeIteratorState iter, SPTEntry currEdge, boolean reverse) {
+        return calcWeight(iter, reverse, getIncomingEdge(currEdge)) + currEdge.getWeightOfVisitedPath();
     }
 
     protected Path extractPath() {
         if (finished())
-            return createPathExtractor(graph, weighting).extract(bestFwdEntry, bestBwdEntry, bestWeight);
+            return createPathExtractor(graph).extract(bestFwdEntry, bestBwdEntry, bestWeight);
 
         return createEmptyPath();
     }
@@ -452,12 +462,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
         this.maxVisitedNodes = numberOfNodes;
     }
 
-    public RoutingAlgorithm setEdgeFilter(EdgeFilter additionalEdgeFilter) {
-        this.levelEdgeFilter = additionalEdgeFilter;
-        return this;
-    }
-
-    protected boolean accept(EdgeIteratorState iter, int prevOrNextEdgeId) {
+    protected boolean accept(RoutingCHEdgeIteratorState iter, int prevOrNextEdgeId) {
         // for edge-based traversal we leave it for TurnWeighting to decide whether or not a u-turn is acceptable,
         // but for node-based traversal we exclude such a turn for performance reasons already here
         if (!traversalMode.isEdgeBased() && iter.getEdge() == prevOrNextEdgeId)
@@ -479,7 +484,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
     }
 
     protected Path createEmptyPath() {
-        return new Path(graph);
+        return new Path(graph.getGraph());
     }
 
     @Override
@@ -489,10 +494,34 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
 
     @Override
     public String toString() {
-        return getName() + "|" + weighting;
+        return getName() + "|" + graph.getWeighting();
     }
 
     protected boolean isMaxVisitedNodesExceeded() {
         return maxVisitedNodes < getVisitedNodes();
+    }
+
+    private static class CHLevelEdgeFilter implements CHEdgeFilter {
+        private final RoutingCHGraph graph;
+        private final int maxNodes;
+
+        public CHLevelEdgeFilter(RoutingCHGraph graph) {
+            this.graph = graph;
+            maxNodes = graph.getBaseGraph().getNodes();
+        }
+
+        public boolean accept(RoutingCHEdgeIteratorState edgeState) {
+            int base = edgeState.getBaseNode();
+            int adj = edgeState.getAdjNode();
+            // always accept virtual edges, see #288
+            if (base >= maxNodes || adj >= maxNodes)
+                return true;
+
+            // minor performance improvement: shortcuts in wrong direction are disconnected, so no need to exclude them
+            if (edgeState.isShortcut())
+                return true;
+
+            return graph.getLevel(base) <= graph.getLevel(adj);
+        }
     }
 }
