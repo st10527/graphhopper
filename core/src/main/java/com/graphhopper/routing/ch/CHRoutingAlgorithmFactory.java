@@ -47,13 +47,13 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
         // graph we have to use: the CH graph. Same with  opts.weighting: The CHProfile already contains a weighting
         // and we cannot really use it here. The real reason we do this the way its done atm is that graph might be
         // a QueryGraph that wraps (our) CHGraph.
-        AbstractBidirAlgo algo = doCreateAlgo(graph, opts);
+        AbstractBidirCHAlgo algo = doCreateAlgo(graph, opts);
         algo.setEdgeFilter(new LevelEdgeFilter(chGraph));
         algo.setMaxVisitedNodes(opts.getMaxVisitedNodes());
         return algo;
     }
 
-    private AbstractBidirAlgo doCreateAlgo(Graph graph, AlgorithmOptions opts) {
+    private AbstractBidirCHAlgo doCreateAlgo(Graph graph, AlgorithmOptions opts) {
         if (chProfile.isEdgeBased()) {
             return createAlgoEdgeBased(graph, opts);
         } else {
@@ -61,7 +61,7 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
         }
     }
 
-    private AbstractBidirAlgo createAlgoEdgeBased(Graph graph, AlgorithmOptions opts) {
+    private AbstractBidirCHAlgo createAlgoEdgeBased(Graph graph, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             return new AStarBidirectionEdgeCHNoSOD(graph, createTurnWeightingForEdgeBased(graph))
                     .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, graph.getNodeAccess()));
@@ -72,7 +72,7 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
         }
     }
 
-    private AbstractBidirAlgo createAlgoNodeBased(Graph graph, AlgorithmOptions opts) {
+    private AbstractBidirCHAlgo createAlgoNodeBased(Graph graph, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             return new AStarBidirectionCH(graph, prepareWeighting)
                     .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, graph.getNodeAccess()));

@@ -21,8 +21,10 @@ import com.graphhopper.routing.ch.NodeBasedCHBidirPathExtractor;
 import com.graphhopper.routing.util.TraversalMode;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.Graph;
+import com.graphhopper.storage.SPTEntry;
+import com.graphhopper.util.EdgeIteratorState;
 
-public class DijkstraBidirectionCHNoSOD extends DijkstraBidirectionRef {
+public class DijkstraBidirectionCHNoSOD extends AbstractBidirCHAlgo {
     public DijkstraBidirectionCHNoSOD(Graph graph, Weighting weighting) {
         super(graph, weighting, TraversalMode.NODE_BASED);
     }
@@ -55,5 +57,21 @@ public class DijkstraBidirectionCHNoSOD extends DijkstraBidirectionRef {
     @Override
     public String toString() {
         return getName() + "|" + weighting;
+    }
+
+    @Override
+    protected SPTEntry createStartEntry(int node, double weight, boolean reverse) {
+        return new SPTEntry(node, weight);
+    }
+
+    @Override
+    protected SPTEntry createEntry(EdgeIteratorState edge, int incEdge, double weight, SPTEntry parent, boolean reverse) {
+        SPTEntry entry = new SPTEntry(edge.getEdge(), edge.getAdjNode(), weight);
+        entry.parent = parent;
+        return entry;
+    }
+
+    protected SPTEntry getParent(SPTEntry entry) {
+        return entry.getParent();
     }
 }

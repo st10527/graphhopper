@@ -36,7 +36,7 @@ import static com.graphhopper.util.EdgeIterator.ANY_EDGE;
 /**
  * @author easbar
  */
-public abstract class AbstractBidirectionEdgeCHNoSOD extends AbstractBidirAlgo {
+public abstract class AbstractBidirectionEdgeCHNoSOD extends AbstractBidirCHAlgo {
     private final EdgeExplorer innerInExplorer;
     private final EdgeExplorer innerOutExplorer;
     private final TurnWeighting turnWeighting;
@@ -173,7 +173,7 @@ public abstract class AbstractBidirectionEdgeCHNoSOD extends AbstractBidirAlgo {
         if (Double.isInfinite(turnWeight)) {
             return false;
         }
-        return additionalEdgeFilter == null || additionalEdgeFilter.accept(edge);
+        return levelEdgeFilter == null || levelEdgeFilter.accept(edge);
     }
 
     @Override
