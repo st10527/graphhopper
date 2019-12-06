@@ -35,7 +35,7 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
 
     @Override
     public RoutingAlgorithm createAlgo(Graph graph, AlgorithmOptions opts) {
-        // todo: This method does not really fit for CH: We are passed a graph, but really we already know which
+        // todo: This method does not really fit for CH: We get a graph, but really we already know which
         // graph we have to use: the CH graph. Same with  opts.weighting: The CHProfile already contains a weighting
         // and we cannot really use it here. The real reason we do this the way its done atm is that graph might be
         // a QueryGraph that wraps (our) CHGraph.
@@ -62,7 +62,7 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
     private AbstractBidirCHAlgo createAlgoEdgeBased(RoutingCHGraph g, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             return new AStarBidirectionEdgeCHNoSOD(g)
-                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getBaseGraph().getNodeAccess()));
+                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getGraph().getNodeAccess()));
         } else if (DIJKSTRA_BI.equals(opts.getAlgorithm())) {
             return new DijkstraBidirectionEdgeCHNoSOD(g);
         } else {
@@ -73,7 +73,7 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
     private AbstractBidirCHAlgo createAlgoNodeBased(RoutingCHGraph g, AlgorithmOptions opts) {
         if (ASTAR_BI.equals(opts.getAlgorithm())) {
             return new AStarBidirectionCH(g)
-                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getBaseGraph().getNodeAccess()));
+                    .setApproximation(RoutingAlgorithmFactorySimple.getApproximation(ASTAR_BI, opts, g.getGraph().getNodeAccess()));
         } else if (DIJKSTRA_BI.equals(opts.getAlgorithm())) {
             if (opts.getHints().getBool("stall_on_demand", true)) {
                 return new DijkstraBidirectionCH(g);

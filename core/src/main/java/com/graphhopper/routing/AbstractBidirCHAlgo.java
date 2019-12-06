@@ -69,7 +69,7 @@ public abstract class AbstractBidirCHAlgo implements BidirRoutingAlgorithm {
     public AbstractBidirCHAlgo(RoutingCHGraph graph, TraversalMode tMode) {
         this.graph = graph;
         this.traversalMode = tMode;
-        this.nodeAccess = graph.getBaseGraph().getNodeAccess();
+        this.nodeAccess = graph.getGraph().getNodeAccess();
         allEdgeExplorer = graph.createAllEdgeExplorer();
         outEdgeExplorer = graph.createOutEdgeExplorer();
         inEdgeExplorer = graph.createInEdgeExplorer();

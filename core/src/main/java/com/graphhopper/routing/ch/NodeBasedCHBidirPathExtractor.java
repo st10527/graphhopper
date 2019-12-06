@@ -31,9 +31,9 @@ public class NodeBasedCHBidirPathExtractor extends BidirPathExtractor {
     private final RoutingCHGraph routingGraph;
 
     public NodeBasedCHBidirPathExtractor(RoutingCHGraph routingGraph, Weighting weighting) {
-        super(routingGraph.getBaseGraph(), weighting);
+        super(routingGraph.getGraph(), weighting);
         this.routingGraph = routingGraph;
-        shortcutUnpacker = createShortcutUnpacker(routingGraph, weighting);
+        shortcutUnpacker = createShortcutUnpacker(weighting);
     }
 
     @Override
@@ -45,7 +45,7 @@ public class NodeBasedCHBidirPathExtractor extends BidirPathExtractor {
         }
     }
 
-    private ShortcutUnpacker createShortcutUnpacker(final RoutingCHGraph routingGraph, final Weighting weighting) {
+    private ShortcutUnpacker createShortcutUnpacker(final Weighting weighting) {
         return new ShortcutUnpacker(routingGraph, new ShortcutUnpacker.Visitor() {
             @Override
             public void visit(EdgeIteratorState edge, boolean reverse, int prevOrNextEdgeId) {

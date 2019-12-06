@@ -34,7 +34,7 @@ public class EdgeBasedCHBidirPathExtractor extends BidirPathExtractor {
     private final ShortcutUnpacker shortcutUnpacker;
 
     public EdgeBasedCHBidirPathExtractor(RoutingCHGraph routingGraph, Weighting weighting) {
-        super(routingGraph.getBaseGraph(), weighting);
+        super(routingGraph.getGraph(), weighting);
         this.routingGraph = routingGraph;
         shortcutUnpacker = createShortcutUnpacker(weighting);
         if (!(weighting instanceof TurnWeighting)) {
