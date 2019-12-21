@@ -54,7 +54,7 @@ public class GraphHopperIT {
     private static final String graphFileFoot = "target/graphhopperIT-foot";
     private static final String osmFile = DIR + "/monaco.osm.gz";
     private static final String importVehicles = "foot";
-    private static final String genericImportVehicles = "generic,foot";
+    private static final String importMultipleVehicles = "car,foot";
     private static final String vehicle = "foot";
     private static final String weightCalcStr = "shortest";
     private static GraphHopper hopper;
@@ -397,20 +397,13 @@ public class GraphHopperIT {
                 setOSMFile(DIR + "/north-bayreuth.osm.gz").
                 setCHEnabled(false).
                 setGraphHopperLocation(tmpGraphFile).
-                setEncodingManager(new EncodingManager.Builder().addAll(new DefaultFlagEncoderFactory(), "car,generic").build());
+                setEncodingManager(new EncodingManager.Builder().addAll(new DefaultFlagEncoderFactory(), "car").build());
         tmpHopper.importOrLoad();
 
         GHRequest req = new GHRequest(49.985307, 11.50628, 49.985731, 11.507465).
                 setVehicle("car").setWeighting("fastest");
 
         GHResponse rsp = tmpHopper.route(req);
-        assertFalse(rsp.getErrors().toString(), rsp.hasErrors());
-        assertEquals(550, rsp.getBest().getDistance(), 1);
-
-        req = new GHRequest(49.985307, 11.50628, 49.985731, 11.507465).
-                setVehicle("generic").setWeighting("generic");
-
-        rsp = tmpHopper.route(req);
         assertFalse(rsp.getErrors().toString(), rsp.hasErrors());
         assertEquals(550, rsp.getBest().getDistance(), 1);
     }
@@ -776,7 +769,7 @@ public class GraphHopperIT {
     public void testSRTMWithTunnelInterpolation() {
         GraphHopper tmpHopper = new GraphHopperOSM().setOSMFile(osmFile).setStoreOnFlush(true)
                 .setCHEnabled(false).setGraphHopperLocation(tmpGraphFile)
-                .setEncodingManager(new EncodingManager.Builder().addAll(new DefaultFlagEncoderFactory(), genericImportVehicles).build());
+                .setEncodingManager(new EncodingManager.Builder().addAll(new DefaultFlagEncoderFactory(), importMultipleVehicles).build());
 
         tmpHopper.setElevationProvider(new SRTMProvider(DIR));
         tmpHopper.importOrLoad();
@@ -803,7 +796,7 @@ public class GraphHopperIT {
     public void testKremsCyclewayInstructionsWithWayTypeInfo() {
         String tmpOsmFile = DIR + "/krems.osm.gz";
         String tmpVehicle = "bike";
-        String tmpImportVehicles = "car,bike";
+        String tmpImportVehicles = "foot,bike";
         String tmpWeightCalcStr = "fastest";
 
         GraphHopper tmpHopper = new GraphHopperOSM().
@@ -816,14 +809,14 @@ public class GraphHopperIT {
 
         Translation tr = tmpHopper.getTranslationMap().getWithFallBack(Locale.US);
         GHResponse rsp = tmpHopper.route(new GHRequest(48.410987, 15.599492, 48.383419, 15.659294).
-                setAlgorithm(ASTAR).setVehicle(tmpVehicle).setWeighting(tmpWeightCalcStr));
-
+                setVehicle(tmpVehicle).setWeighting(tmpWeightCalcStr));
+        assertFalse(rsp.hasErrors());
         PathWrapper arsp = rsp.getBest();
         assertEquals(6932.2, arsp.getDistance(), .1);
-        assertEquals(105, arsp.getPoints().getSize());
+        assertEquals(106, arsp.getPoints().getSize());
 
         InstructionList il = arsp.getInstructions();
-        assertEquals(21, il.size());
+        assertEquals(22, il.size());
 
         assertEquals("continue onto Obere Landstraße", il.get(0).getTurnDescription(tr));
         assertEquals("get off the bike", il.get(0).getAnnotation().getMessage());
@@ -840,8 +833,16 @@ public class GraphHopperIT {
         assertEquals("keep left onto Austraße", il.get(11).getTurnDescription(tr));
         assertEquals("keep left onto Rechte Kremszeile", il.get(12).getTurnDescription(tr));
         //..
-        assertEquals("turn right onto Treppelweg", il.get(17).getTurnDescription(tr));
-        assertEquals("cycleway", il.get(17).getAnnotation().getMessage());
+        assertEquals("turn right onto Treppelweg", il.get(18).getTurnDescription(tr));
+        assertEquals("cycleway", il.get(18).getAnnotation().getMessage());
+
+        // do not return 'get off bike' for foot
+        rsp = tmpHopper.route(new GHRequest(48.410987, 15.599492, 48.411172, 15.600371).
+                setAlgorithm(ASTAR).setVehicle("foot").setWeighting(tmpWeightCalcStr));
+        assertFalse(rsp.hasErrors());
+        il = rsp.getBest().getInstructions();
+        assertEquals("continue onto Obere Landstraße", il.get(0).getTurnDescription(tr));
+        assertEquals("", il.get(0).getAnnotation().getMessage());
     }
 
     @Test

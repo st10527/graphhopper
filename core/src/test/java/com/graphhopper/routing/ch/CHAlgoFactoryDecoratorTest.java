@@ -27,10 +27,10 @@ import com.graphhopper.storage.CHProfile;
 import com.graphhopper.storage.Directory;
 import com.graphhopper.storage.GraphHopperStorage;
 import com.graphhopper.storage.RAMDirectory;
+import com.graphhopper.storage.*;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -60,9 +60,11 @@ public class CHAlgoFactoryDecoratorTest {
         profileEdge1 = CHProfile.edgeBased(new FastestWeighting(encoder), 30);
         profileEdge2 = CHProfile.edgeBased(new ShortestWeighting(encoder), 30);
         profileEdge3 = CHProfile.edgeBased(new ShortFastestWeighting(encoder, 0.1), 30);
-        ghStorage = new GraphHopperStorage(
-                Arrays.asList(profileNode1, profileNode2, profileNode3, profileEdge1, profileEdge2, profileEdge3),
-                dir, encodingManager, false, true);
+        ghStorage = new GraphBuilder(encodingManager)
+                .setCHProfiles(profileNode1, profileNode2, profileNode3, profileEdge1, profileEdge2, profileEdge3)
+                .setDir(dir)
+                .withTurnCosts(true)
+                .create();
     }
 
     @Test

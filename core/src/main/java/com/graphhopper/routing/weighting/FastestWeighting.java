@@ -41,9 +41,9 @@ public class FastestWeighting extends AbstractWeighting {
     private final double headingPenalty;
     private final long headingPenaltyMillis;
     private final double maxSpeed;
-    private EnumEncodedValue<RoadAccess> roadAccessEnc = null;
+    private final EnumEncodedValue<RoadAccess> roadAccessEnc;
     // this factor puts a penalty on roads with a "destination"-only access, see #733
-    private double roadAccessPenalty;
+    private final double roadAccessPenalty;
 
     public FastestWeighting(FlagEncoder encoder, PMap map) {
         super(encoder);
@@ -55,6 +55,9 @@ public class FastestWeighting extends AbstractWeighting {
             // ensure that we do not need to change getMinWeight, i.e. road_access_factor >= 1
             roadAccessPenalty = checkBounds("road_access_factor", map.getDouble("road_access_factor", 10), 1, 10);
             roadAccessEnc = encoder.getEnumEncodedValue(RoadAccess.KEY, RoadAccess.class);
+        } else {
+            roadAccessPenalty = 0;
+            roadAccessEnc = null;
         }
     }
 
@@ -68,18 +71,18 @@ public class FastestWeighting extends AbstractWeighting {
     }
 
     @Override
-    public double calcWeight(EdgeIteratorState edge, boolean reverse, int prevOrNextEdgeId) {
-        double speed = reverse ? edge.getReverse(avSpeedEnc) : edge.get(avSpeedEnc);
+    public double calcWeight(EdgeIteratorState edgeState, boolean reverse, int prevOrNextEdgeId) {
+        double speed = reverse ? edgeState.getReverse(avSpeedEnc) : edgeState.get(avSpeedEnc);
         if (speed == 0)
             return Double.POSITIVE_INFINITY;
 
-        double time = edge.getDistance() / speed * SPEED_CONV;
+        double time = edgeState.getDistance() / speed * SPEED_CONV;
 
-        if (roadAccessEnc != null && edge.get(roadAccessEnc) == RoadAccess.DESTINATION)
+        if (roadAccessEnc != null && edgeState.get(roadAccessEnc) == RoadAccess.DESTINATION)
             time *= roadAccessPenalty;
 
         // add direction penalties at start/stop/via points
-        boolean unfavoredEdge = edge.get(EdgeIteratorState.UNFAVORED_EDGE);
+        boolean unfavoredEdge = edgeState.get(EdgeIteratorState.UNFAVORED_EDGE);
         if (unfavoredEdge)
             time += headingPenalty;
 

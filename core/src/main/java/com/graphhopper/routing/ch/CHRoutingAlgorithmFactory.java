@@ -46,6 +46,8 @@ public class CHRoutingAlgorithmFactory implements RoutingAlgorithmFactory {
 
     private AbstractBidirCHAlgo doCreateAlgo(Graph graph, AlgorithmOptions opts) {
         if (chProfile.isEdgeBased()) {
+            // important: do not simply take the turn cost storage from ghStorage, because we need the wrapped storage from
+            // query graph!
             TurnCostStorage turnCostStorage = graph.getTurnCostStorage();
             if (turnCostStorage == null) {
                 throw new IllegalArgumentException("For edge-based CH you need a turn cost extension");

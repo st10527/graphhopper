@@ -20,6 +20,7 @@ package com.graphhopper;
 import com.graphhopper.json.geo.JsonFeature;
 import com.graphhopper.reader.DataReader;
 import com.graphhopper.reader.dem.*;
+import com.graphhopper.reader.osm.conditional.DateRangeParser;
 import com.graphhopper.routing.*;
 import com.graphhopper.routing.ch.CHAlgoFactoryDecorator;
 import com.graphhopper.routing.ch.CHRoutingAlgorithmFactory;
@@ -520,10 +521,12 @@ public class GraphHopper implements GraphHopperAPI {
         if (!flagEncodersStr.isEmpty() || !encodedValueStr.isEmpty()) {
             if (!encodedValueStr.isEmpty())
                 emBuilder.addAll(tagParserFactory, encodedValueStr);
+            registerCustomEncodedValues(emBuilder);
             if (!flagEncodersStr.isEmpty())
                 emBuilder.addAll(flagEncoderFactory, flagEncodersStr);
             emBuilder.setEnableInstructions(args.getBool("datareader.instructions", true));
             emBuilder.setPreferredLanguage(args.get("datareader.preferred_language", ""));
+            emBuilder.setDateRangeParser(DateRangeParser.createInstance(args.get("datareader.date_range_parser_day", "")));
             // overwrite EncodingManager object from configuration file
             setEncodingManager(emBuilder.build());
         }
@@ -747,6 +750,8 @@ public class GraphHopper implements GraphHopperAPI {
         if (lmFactoryDecorator.isEnabled())
             initLMAlgoFactoryDecorator();
 
+        ghStorage = new GraphHopperStorage(dir, encodingManager, hasElevation(), encodingManager.needsTurnCostsSupport(), defaultSegmentSize);
+
         List<CHProfile> chProfiles;
         if (chFactoryDecorator.isEnabled()) {
             initCHAlgoFactoryDecorator();
@@ -755,7 +760,8 @@ public class GraphHopper implements GraphHopperAPI {
             chProfiles = Collections.emptyList();
         }
 
-        ghStorage = new GraphHopperStorage(chProfiles, dir, encodingManager, hasElevation(), encodingManager.needsTurnCostsSupport(), defaultSegmentSize);
+        ghStorage.addCHGraphs(chProfiles);
+
 
         if (!new File(graphHopperFolder).exists())
             return false;
@@ -879,6 +885,8 @@ public class GraphHopper implements GraphHopperAPI {
 
         initLocationIndex();
 
+        importPublicTransit();
+
         if (lmFactoryDecorator.isEnabled())
             lmFactoryDecorator.createPreparations(ghStorage, locationIndex);
         loadOrPrepareLM(closeEarly);
@@ -887,6 +895,14 @@ public class GraphHopper implements GraphHopperAPI {
             chFactoryDecorator.createPreparations(ghStorage);
         if (!isCHPrepared())
             prepareCH(closeEarly);
+    }
+
+    protected void registerCustomEncodedValues(EncodingManager.Builder emBuilder) {
+
+    }
+
+    protected void importPublicTransit() {
+
     }
 
     private static final String INTERPOLATION_KEY = "prepare.elevation_interpolation.done";
@@ -924,9 +940,7 @@ public class GraphHopper implements GraphHopperAPI {
         String weightingStr = toLowerCase(hintsMap.getWeighting());
         Weighting weighting = null;
 
-        if (encoder.supports(GenericWeighting.class)) {
-            weighting = new GenericWeighting((DataFlagEncoder) encoder, hintsMap);
-        } else if ("shortest".equalsIgnoreCase(weightingStr)) {
+        if ("shortest".equalsIgnoreCase(weightingStr)) {
             weighting = new ShortestWeighting(encoder);
         } else if ("fastest".equalsIgnoreCase(weightingStr) || weightingStr.isEmpty()) {
             if (encoder.supports(PriorityWeighting.class))

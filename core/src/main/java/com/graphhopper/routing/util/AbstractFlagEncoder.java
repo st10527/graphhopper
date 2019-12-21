@@ -29,10 +29,7 @@ import com.graphhopper.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Abstract class which handles flag decoding and encoding. Every encoder should be registered to a
@@ -108,19 +105,22 @@ public abstract class AbstractFlagEncoder implements FlagEncoder {
         ferries.add("ferry");
     }
 
-    // should be called as last method in constructor, move out of the flag encoder somehow
-    protected void init() {
-        // we should move 'OSM to object' logic into the DataReader like OSMReader, but this is a major task as we need to convert OSM format into kind of a standard/generic format
-        conditionalTagInspector = new ConditionalOSMTagInspector(DateRangeParser.createCalendar(), restrictions, restrictedValues, intendedValues);
+    protected void init(DateRangeParser dateRangeParser) {
+        setConditionalTagInspector(new ConditionalOSMTagInspector(Collections.singletonList(dateRangeParser),
+                restrictions, restrictedValues, intendedValues, false));
+    }
+
+    protected void setConditionalTagInspector(ConditionalTagInspector inspector) {
+        if (conditionalTagInspector != null)
+            throw new IllegalStateException("You must not register a FlagEncoder (" + toString() + ") twice or for two EncodingManagers!");
+
+        registered = true;
+        conditionalTagInspector = inspector;
     }
 
     @Override
     public boolean isRegistered() {
         return registered;
-    }
-
-    public void setRegistered(boolean registered) {
-        this.registered = registered;
     }
 
     /**
@@ -140,10 +140,6 @@ public abstract class AbstractFlagEncoder implements FlagEncoder {
 
     public ConditionalTagInspector getConditionalTagInspector() {
         return conditionalTagInspector;
-    }
-
-    protected void setConditionalTagInspector(ConditionalTagInspector conditionalTagInspector) {
-        this.conditionalTagInspector = conditionalTagInspector;
     }
 
     /**
