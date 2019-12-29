@@ -36,4 +36,10 @@ public interface PrepareCHEdgeIterator {
     double getWeight(boolean reverse);
 
     void setWeight(double weight);
+
+    int getMergeStatus(int flags);
+
+    void setFlagsAndWeight(int flags, double weight);
+
+    void setSkippedEdges(int skippedEdge1, int skippedEdge2);
 }
