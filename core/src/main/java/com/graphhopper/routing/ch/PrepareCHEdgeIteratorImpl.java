@@ -84,16 +84,23 @@ public class PrepareCHEdgeIteratorImpl implements PrepareCHEdgeExplorer, Prepare
     }
 
     private boolean finiteWeight(boolean reverse) {
-        return !Double.isInfinite(getOrigEdgeWeight(reverse));
+        return !Double.isInfinite(getOrigEdgeWeight(reverse, false));
     }
 
-    private double getOrigEdgeWeight(boolean reverse) {
+    /**
+     * @param needWeight if true this method will return as soon as its clear that the weight is finite (no need to
+     *                   do the full computation)
+     */
+    private double getOrigEdgeWeight(boolean reverse, boolean needWeight) {
         // todo: for #1776 move the access check into the weighting
         final boolean access = reverse
                 ? chIterator.getReverse(weighting.getFlagEncoder().getAccessEnc())
                 : chIterator.get(weighting.getFlagEncoder().getAccessEnc());
         if (!access) {
             return Double.POSITIVE_INFINITY;
+        }
+        if (!needWeight) {
+            return 0;
         }
         return weighting.calcWeight(chIterator, reverse, EdgeIterator.NO_EDGE);
     }
@@ -141,7 +148,7 @@ public class PrepareCHEdgeIteratorImpl implements PrepareCHEdgeExplorer, Prepare
             return ((CHEdgeIterator) chIterator).getWeight();
         } else {
             assertBaseNodeSet();
-            return getOrigEdgeWeight(reverse);
+            return getOrigEdgeWeight(reverse, true);
         }
     }
 
