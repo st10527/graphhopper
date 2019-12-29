@@ -707,10 +707,9 @@ public class CHQueryWithTurnCostsTest {
 
     private AbstractBidirectionEdgeCHNoSOD createAlgo() {
         TurnWeighting turnWeighting = new TurnWeighting(weighting, graph.getTurnCostStorage());
-        AbstractBidirectionEdgeCHNoSOD algo = "astar".equals(algoString) ?
+        return "astar".equals(algoString) ?
                 new AStarBidirectionEdgeCHNoSOD(new RoutingCHGraphImpl(chGraph, weighting, turnWeighting)) :
                 new DijkstraBidirectionEdgeCHNoSOD(new RoutingCHGraphImpl(chGraph, weighting, turnWeighting));
-        return algo;
     }
 
     private void addShortcut(int from, int to, int firstOrigEdge, int lastOrigEdge, int skipped1, int skipped2, double weight) {
