@@ -18,7 +18,9 @@
 
 package com.graphhopper.routing.ch;
 
+import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.weighting.Weighting;
+import com.graphhopper.util.CHEdgeExplorer;
 import com.graphhopper.util.CHEdgeIterator;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
@@ -26,11 +28,25 @@ import com.graphhopper.util.EdgeIterator;
 public class PrepareCHEdgeIterator implements PrepareCHEdgeExplorer {
     private final EdgeExplorer edgeExplorer;
     private final Weighting weighting;
+    private final DefaultEdgeFilter defaultEdgeFilter;
     private EdgeIterator chIterator;
 
-    public PrepareCHEdgeIterator(EdgeExplorer edgeExplorer, Weighting weighting) {
+    public static PrepareCHEdgeExplorer inEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
+        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.inEdges(weighting.getFlagEncoder().getAccessEnc()));
+    }
+
+    public static PrepareCHEdgeExplorer outEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
+        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.outEdges(weighting.getFlagEncoder().getAccessEnc()));
+    }
+
+    public static PrepareCHEdgeExplorer allEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
+        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.allEdges(weighting.getFlagEncoder().getAccessEnc()));
+    }
+
+    public PrepareCHEdgeIterator(EdgeExplorer edgeExplorer, Weighting weighting, DefaultEdgeFilter defaultEdgeFilter) {
         this.edgeExplorer = edgeExplorer;
         this.weighting = weighting;
+        this.defaultEdgeFilter = defaultEdgeFilter;
     }
 
     @Override
@@ -41,7 +57,18 @@ public class PrepareCHEdgeIterator implements PrepareCHEdgeExplorer {
 
     public boolean next() {
         assertBaseNodeSet();
-        return chIterator.next();
+        while (true) {
+            boolean hasNext = chIterator.next();
+            if (!hasNext) {
+                return false;
+            } else if (hasAccess()) {
+                return true;
+            }
+        }
+    }
+
+    private boolean hasAccess() {
+        return defaultEdgeFilter.accept(chIterator);
     }
 
     public int getEdge() {
