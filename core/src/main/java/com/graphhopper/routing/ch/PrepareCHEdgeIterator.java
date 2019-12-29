@@ -40,44 +40,53 @@ public class PrepareCHEdgeIterator implements PrepareCHEdgeExplorer {
     }
 
     public boolean next() {
-        return iter().next();
+        assertBaseNodeSet();
+        return chIterator.next();
     }
 
     public int getEdge() {
-        return iter().getEdge();
+        assertBaseNodeSet();
+        return chIterator.getEdge();
     }
 
     public int getBaseNode() {
-        return iter().getBaseNode();
+        assertBaseNodeSet();
+        return chIterator.getBaseNode();
     }
 
     public int getAdjNode() {
-        return iter().getAdjNode();
+        assertBaseNodeSet();
+        return chIterator.getAdjNode();
     }
 
     public int getOrigEdgeFirst() {
-        return iter().getOrigEdgeFirst();
+        assertBaseNodeSet();
+        return chIterator.getOrigEdgeFirst();
     }
 
     public int getOrigEdgeLast() {
-        return iter().getOrigEdgeLast();
+        assertBaseNodeSet();
+        return chIterator.getOrigEdgeLast();
     }
 
     public boolean isShortcut() {
-        final EdgeIterator iter = iter();
+        assertBaseNodeSet();
+        final EdgeIterator iter = chIterator;
         return iter instanceof CHEdgeIterator && ((CHEdgeIterator) iter).isShortcut();
     }
 
     public double getWeight(boolean reverse) {
         if (isShortcut()) {
-            return chIter().getWeight();
+            return ((CHEdgeIterator) chIterator).getWeight();
         } else {
-            return weighting.calcWeight(iter(), reverse, EdgeIterator.NO_EDGE);
+            assertBaseNodeSet();
+            return weighting.calcWeight(chIterator, reverse, EdgeIterator.NO_EDGE);
         }
     }
 
     public void setWeight(double weight) {
-        chIter().setWeight(weight);
+        assertBaseNodeSet();
+        ((CHEdgeIterator) chIterator).setWeight(weight);
     }
 
     @Override
@@ -90,29 +99,21 @@ public class PrepareCHEdgeIterator implements PrepareCHEdgeExplorer {
     }
 
     int getMergeStatus(int flags) {
-        return chIter().getMergeStatus(flags);
+        assertBaseNodeSet();
+        return ((CHEdgeIterator) chIterator).getMergeStatus(flags);
     }
 
     void setFlagsAndWeight(int flags, double weight) {
-        chIter().setFlagsAndWeight(flags, weight);
+        assertBaseNodeSet();
+        ((CHEdgeIterator) chIterator).setFlagsAndWeight(flags, weight);
     }
 
     void setSkippedEdges(int skippedEdge1, int skippedEdge2) {
-        chIter().setSkippedEdges(skippedEdge1, skippedEdge2);
+        assertBaseNodeSet();
+        ((CHEdgeIterator) chIterator).setSkippedEdges(skippedEdge1, skippedEdge2);
     }
 
-    private EdgeIterator iter() {
-        if (chIterator == null) {
-            throw new IllegalStateException("You need to call setBaseNode() first");
-        }
-        return chIterator;
-    }
-
-    private CHEdgeIterator chIter() {
-        EdgeIterator iter = iter();
-        if (!(iter instanceof CHEdgeIterator)) {
-            throw new IllegalStateException("Expected a CH edge iterator, but was: " + iter.getClass().getSimpleName());
-        }
-        return (CHEdgeIterator) iter;
+    private void assertBaseNodeSet() {
+        assert chIterator != null : "You need to call setBaseNode() before using the iterator";
     }
 }
