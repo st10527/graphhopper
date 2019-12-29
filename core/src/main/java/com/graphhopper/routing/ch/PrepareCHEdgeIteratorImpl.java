@@ -18,6 +18,7 @@
 
 package com.graphhopper.routing.ch;
 
+import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.CHEdgeIterator;
 import com.graphhopper.util.CHEdgeIteratorState;
@@ -28,6 +29,7 @@ public class PrepareCHEdgeIteratorImpl implements PrepareCHEdgeExplorer, Prepare
     private final EdgeExplorer edgeExplorer;
     private final Weighting weighting;
     private final ShortcutFilter shortcutFilter;
+    private final BooleanEncodedValue accessEnc;
     private EdgeIterator chIterator;
 
     public static PrepareCHEdgeExplorer inEdges(EdgeExplorer edgeExplorer, Weighting weighting) {
@@ -46,6 +48,7 @@ public class PrepareCHEdgeIteratorImpl implements PrepareCHEdgeExplorer, Prepare
         this.edgeExplorer = edgeExplorer;
         this.weighting = weighting;
         this.shortcutFilter = shortcutFilter;
+        accessEnc = weighting.getFlagEncoder().getAccessEnc();
     }
 
     @Override
@@ -94,8 +97,8 @@ public class PrepareCHEdgeIteratorImpl implements PrepareCHEdgeExplorer, Prepare
     private double getOrigEdgeWeight(boolean reverse, boolean needWeight) {
         // todo: for #1776 move the access check into the weighting
         final boolean access = reverse
-                ? chIterator.getReverse(weighting.getFlagEncoder().getAccessEnc())
-                : chIterator.get(weighting.getFlagEncoder().getAccessEnc());
+                ? chIterator.getReverse(accessEnc)
+                : chIterator.get(accessEnc);
         if (!access) {
             return Double.POSITIVE_INFINITY;
         }
