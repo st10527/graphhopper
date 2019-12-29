@@ -57,23 +57,23 @@ public class PrepareCHGraph {
     }
 
     public PrepareCHEdgeExplorer createInEdgeExplorer() {
-        return PrepareCHEdgeIterator.inEdges(chGraph.createEdgeExplorer(), weighting);
+        return PrepareCHEdgeIteratorImpl.inEdges(chGraph.createEdgeExplorer(), weighting);
     }
 
     public PrepareCHEdgeExplorer createOutEdgeExplorer() {
-        return PrepareCHEdgeIterator.outEdges(chGraph.createEdgeExplorer(), weighting);
+        return PrepareCHEdgeIteratorImpl.outEdges(chGraph.createEdgeExplorer(), weighting);
     }
 
     public PrepareCHEdgeExplorer createAllEdgeExplorer() {
-        return PrepareCHEdgeIterator.allEdges(chGraph.createEdgeExplorer(), weighting);
+        return PrepareCHEdgeIteratorImpl.allEdges(chGraph.createEdgeExplorer(), weighting);
     }
 
     public PrepareCHEdgeExplorer createOriginalInEdgeExplorer() {
-        return PrepareCHEdgeIterator.inEdges(chGraph.createOriginalEdgeExplorer(), weighting);
+        return PrepareCHEdgeIteratorImpl.inEdges(chGraph.createOriginalEdgeExplorer(), weighting);
     }
 
     public PrepareCHEdgeExplorer createOriginalOutEdgeExplorer() {
-        return PrepareCHEdgeIterator.outEdges(chGraph.createOriginalEdgeExplorer(), weighting);
+        return PrepareCHEdgeIteratorImpl.outEdges(chGraph.createOriginalEdgeExplorer(), weighting);
     }
 
     public int getNodes() {

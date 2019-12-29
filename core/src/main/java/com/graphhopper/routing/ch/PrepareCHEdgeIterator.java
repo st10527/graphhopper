@@ -18,129 +18,22 @@
 
 package com.graphhopper.routing.ch;
 
-import com.graphhopper.routing.util.DefaultEdgeFilter;
-import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.util.CHEdgeExplorer;
-import com.graphhopper.util.CHEdgeIterator;
-import com.graphhopper.util.EdgeExplorer;
-import com.graphhopper.util.EdgeIterator;
+public interface PrepareCHEdgeIterator {
+    boolean next();
 
-public class PrepareCHEdgeIterator implements PrepareCHEdgeExplorer {
-    private final EdgeExplorer edgeExplorer;
-    private final Weighting weighting;
-    private final DefaultEdgeFilter defaultEdgeFilter;
-    private EdgeIterator chIterator;
+    int getEdge();
 
-    public static PrepareCHEdgeExplorer inEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
-        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.inEdges(weighting.getFlagEncoder().getAccessEnc()));
-    }
+    int getBaseNode();
 
-    public static PrepareCHEdgeExplorer outEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
-        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.outEdges(weighting.getFlagEncoder().getAccessEnc()));
-    }
+    int getAdjNode();
 
-    public static PrepareCHEdgeExplorer allEdges(CHEdgeExplorer edgeExplorer, Weighting weighting) {
-        return new PrepareCHEdgeIterator(edgeExplorer, weighting, DefaultEdgeFilter.allEdges(weighting.getFlagEncoder().getAccessEnc()));
-    }
+    int getOrigEdgeFirst();
 
-    public PrepareCHEdgeIterator(EdgeExplorer edgeExplorer, Weighting weighting, DefaultEdgeFilter defaultEdgeFilter) {
-        this.edgeExplorer = edgeExplorer;
-        this.weighting = weighting;
-        this.defaultEdgeFilter = defaultEdgeFilter;
-    }
+    int getOrigEdgeLast();
 
-    @Override
-    public PrepareCHEdgeIterator setBaseNode(int node) {
-        chIterator = edgeExplorer.setBaseNode(node);
-        return this;
-    }
+    boolean isShortcut();
 
-    public boolean next() {
-        assertBaseNodeSet();
-        while (true) {
-            boolean hasNext = chIterator.next();
-            if (!hasNext) {
-                return false;
-            } else if (hasAccess()) {
-                return true;
-            }
-        }
-    }
+    double getWeight(boolean reverse);
 
-    private boolean hasAccess() {
-        return defaultEdgeFilter.accept(chIterator);
-    }
-
-    public int getEdge() {
-        assertBaseNodeSet();
-        return chIterator.getEdge();
-    }
-
-    public int getBaseNode() {
-        assertBaseNodeSet();
-        return chIterator.getBaseNode();
-    }
-
-    public int getAdjNode() {
-        assertBaseNodeSet();
-        return chIterator.getAdjNode();
-    }
-
-    public int getOrigEdgeFirst() {
-        assertBaseNodeSet();
-        return chIterator.getOrigEdgeFirst();
-    }
-
-    public int getOrigEdgeLast() {
-        assertBaseNodeSet();
-        return chIterator.getOrigEdgeLast();
-    }
-
-    public boolean isShortcut() {
-        assertBaseNodeSet();
-        final EdgeIterator iter = chIterator;
-        return iter instanceof CHEdgeIterator && ((CHEdgeIterator) iter).isShortcut();
-    }
-
-    public double getWeight(boolean reverse) {
-        if (isShortcut()) {
-            return ((CHEdgeIterator) chIterator).getWeight();
-        } else {
-            assertBaseNodeSet();
-            return weighting.calcWeight(chIterator, reverse, EdgeIterator.NO_EDGE);
-        }
-    }
-
-    public void setWeight(double weight) {
-        assertBaseNodeSet();
-        ((CHEdgeIterator) chIterator).setWeight(weight);
-    }
-
-    @Override
-    public String toString() {
-        if (chIterator == null) {
-            return "not initialized";
-        } else {
-            return getBaseNode() + "->" + getAdjNode() + " (" + getEdge() + ")";
-        }
-    }
-
-    int getMergeStatus(int flags) {
-        assertBaseNodeSet();
-        return ((CHEdgeIterator) chIterator).getMergeStatus(flags);
-    }
-
-    void setFlagsAndWeight(int flags, double weight) {
-        assertBaseNodeSet();
-        ((CHEdgeIterator) chIterator).setFlagsAndWeight(flags, weight);
-    }
-
-    void setSkippedEdges(int skippedEdge1, int skippedEdge2) {
-        assertBaseNodeSet();
-        ((CHEdgeIterator) chIterator).setSkippedEdges(skippedEdge1, skippedEdge2);
-    }
-
-    private void assertBaseNodeSet() {
-        assert chIterator != null : "You need to call setBaseNode() before using the iterator";
-    }
+    void setWeight(double weight);
 }
