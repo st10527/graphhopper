@@ -20,7 +20,6 @@ package com.graphhopper.storage;
 
 import com.graphhopper.routing.profiles.BooleanEncodedValue;
 import com.graphhopper.routing.querygraph.QueryGraph;
-import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.weighting.TurnWeighting;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.EdgeIteratorState;
@@ -88,26 +87,27 @@ public class RoutingCHGraphImpl implements RoutingCHGraph {
 
     @Override
     public RoutingCHEdgeExplorer createInEdgeExplorer() {
-        return new RoutingCHEdgeIteratorImpl(graph.createEdgeExplorer(DefaultEdgeFilter.inEdges(accessEnc)), weighting);
+        return RoutingCHEdgeIteratorImpl.inEdges(graph.createEdgeExplorer(), weighting);
     }
 
+    @Override
     public RoutingCHEdgeExplorer createOutEdgeExplorer() {
-        return new RoutingCHEdgeIteratorImpl(graph.createEdgeExplorer(DefaultEdgeFilter.outEdges(accessEnc)), weighting);
+        return RoutingCHEdgeIteratorImpl.outEdges(graph.createEdgeExplorer(), weighting);
     }
 
     @Override
     public RoutingCHEdgeExplorer createAllEdgeExplorer() {
-        return new RoutingCHEdgeIteratorImpl(graph.createEdgeExplorer(DefaultEdgeFilter.allEdges(accessEnc)), weighting);
+        return RoutingCHEdgeIteratorImpl.allEdges(graph.createEdgeExplorer(), weighting);
     }
 
     @Override
     public RoutingCHEdgeExplorer createOriginalInEdgeExplorer() {
-        return new RoutingCHEdgeIteratorImpl(graph.getBaseGraph().createEdgeExplorer(DefaultEdgeFilter.inEdges(accessEnc)), weighting);
+        return RoutingCHEdgeIteratorImpl.inEdges(graph.getBaseGraph().createEdgeExplorer(), weighting);
     }
 
     @Override
     public RoutingCHEdgeExplorer createOriginalOutEdgeExplorer() {
-        return new RoutingCHEdgeIteratorImpl(graph.getBaseGraph().createEdgeExplorer(DefaultEdgeFilter.outEdges(accessEnc)), weighting);
+        return RoutingCHEdgeIteratorImpl.outEdges(graph.getBaseGraph().createEdgeExplorer(), weighting);
     }
 
     @Override

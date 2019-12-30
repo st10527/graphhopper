@@ -18,6 +18,7 @@
 
 package com.graphhopper.storage;
 
+import com.graphhopper.routing.util.DefaultEdgeFilter;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.util.EdgeExplorer;
 import com.graphhopper.util.EdgeIterator;
@@ -25,11 +26,25 @@ import com.graphhopper.util.EdgeIteratorState;
 
 public class RoutingCHEdgeIteratorImpl extends RoutingCHEdgeIteratorStateImpl implements RoutingCHEdgeExplorer, RoutingCHEdgeIterator {
     private final EdgeExplorer edgeExplorer;
+    private final DefaultEdgeFilter shortcutFilter;
     private EdgeIterator edgeIterator;
 
-    public RoutingCHEdgeIteratorImpl(EdgeExplorer edgeExplorer, Weighting weighting) {
+    public static RoutingCHEdgeIteratorImpl inEdges(EdgeExplorer edgeExplorer, Weighting weighting) {
+        return new RoutingCHEdgeIteratorImpl(edgeExplorer, weighting, DefaultEdgeFilter.inEdges(weighting.getFlagEncoder()));
+    }
+
+    public static RoutingCHEdgeIteratorImpl outEdges(EdgeExplorer edgeExplorer, Weighting weighting) {
+        return new RoutingCHEdgeIteratorImpl(edgeExplorer, weighting, DefaultEdgeFilter.outEdges(weighting.getFlagEncoder()));
+    }
+
+    public static RoutingCHEdgeIteratorImpl allEdges(EdgeExplorer edgeExplorer, Weighting weighting) {
+        return new RoutingCHEdgeIteratorImpl(edgeExplorer, weighting, DefaultEdgeFilter.allEdges(weighting.getFlagEncoder()));
+    }
+
+    public RoutingCHEdgeIteratorImpl(EdgeExplorer edgeExplorer, Weighting weighting, DefaultEdgeFilter shortcutFilter) {
         super(null, weighting);
         this.edgeExplorer = edgeExplorer;
+        this.shortcutFilter = shortcutFilter;
     }
 
     @Override
@@ -45,7 +60,19 @@ public class RoutingCHEdgeIteratorImpl extends RoutingCHEdgeIteratorStateImpl im
 
     @Override
     public boolean next() {
-        return edgeIterator.next();
+        while (true) {
+            boolean hasNext = edgeIterator.next();
+            if (!hasNext) {
+                return false;
+            } else if (hasAccess()) {
+                return true;
+            }
+        }
+    }
+
+    private boolean hasAccess() {
+        // todonow: consider weighting here
+        return shortcutFilter.accept(edgeIterator);
     }
 
 }
